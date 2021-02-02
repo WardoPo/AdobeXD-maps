@@ -4,33 +4,17 @@ const utils = require("./utils");
 const { alert, error } = require("./lib/dialogs");
 const { editDocument } = require("application");
 
-const panel = document.createElement("panel");
+let panel;
 
 /**
  * Creates and initializes the dialog UI
  */
 async function init() {
-    let HTML = `
+
+    const HTML = `
 <style>
     label {
         margin-bottom: 10px;
-    }
-    .h1 {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .h1 img {
-        width: 18px;
-        height: 18px;
-        flex: 0 0 18px;
-        padding: 0;
-        margin: 0;
-    }
-    img.plugin-icon {
-        border-radius: 4px;
-        overflow: hidden;
     }
     .container {
         overflow-x: hidden;
@@ -41,15 +25,16 @@ async function init() {
         align-items: center;
     }
     .zoomLevel {
-        width: 57px;
+        /* width was 57px */
+        width: 16.6%;
         height: 81px;
         margin: 1px;
     }
     .zoomLevelInput {
         height: 85px;
         width: 100%;
-        background: url("images/zoomlevels.png");
-        background-size: contain;
+        /* background: url("images/zoomlevels.png"); */
+        /* background-size: contain; */
     }
     #zoomValue, #mapType {
         font-weight: 700;
@@ -62,20 +47,24 @@ async function init() {
     }
     .zoomLevelInput, .mapTypeInput {
         display: flex;
-        width: 350px;
+        /* width was 350px */
+        width: 100%;
+        max-width: 350px;
+
         margin-left: 5px;
         margin-top: 5px;
     }
     .mapType {
-        width: 88px;
+        /*width was 88 px*/
+        width: 25%;
         position: relative;
         height: 36px;
         margin: 1px;
     }
     .mapTypeInput {
         height: 40px;
-        background: url("images/maptypes.png");
-        background-size: contain;
+        background: url("images/roadmap.png");
+        /* background-size: contain; */
     }
     .checkmark {
         position: absolute;
@@ -117,7 +106,7 @@ async function init() {
         <label>
             <div class="row"><p>Map Type: </p><p id="mapType">Roadmap</p> </div>
             <div class="mapTypeInput">
-                <div class="mapType selected">
+                <div class="mapType selected" style='background:url("images/roadmap.png");background-size:contain;'>
                     <img class="checkmark" src="images/checkmark.png" alt="selected" />
                 </div>
                 <div class="mapType">
@@ -153,6 +142,7 @@ async function init() {
 </form>
     `;
 
+    panel = document.createElement("panel");
     panel.innerHTML = HTML;
 
     // Zoom level input handling
@@ -209,6 +199,8 @@ async function init() {
         styles.value = savedStyles;
     }
 
+    return panel;
+
 }
 
 /**
@@ -227,10 +219,24 @@ function getInputData() {
     }
 }
 
-function show(event) {
-    event.node.appendChild(panel);
+async function show(event) {
+
+    if(!panel){
+        panel = await init();
+        event.node.appendChild(panel);
+    }
+
 }
 
+function hide(event) {
+    // your code here
+  }
+
+function update(selection) {
+  
+    panel.querySelector("#btn1").disabled = selection.items.length === 0;
+
+}
 
 /**
  * Main function which generates the map
@@ -264,15 +270,6 @@ async function generateMap() {
     editDocument({ editLabel: "Generate Map" }, async function (selection) {
 
         //This error handling is going to move somewhere else
-
-        if (selection.items.length === 0) {
-            await error(
-                "Selection Error",
-                "Please select some layers.",
-                "Supported layers are Rectangle, Ellipse, Path and BooleanGroup."
-            );
-            return;
-        }
 
         const totalObjCount = selection.items.length;
         let filledObjCount = 0;
@@ -335,8 +332,6 @@ async function generateMap() {
     return;
 }
 
-init(); // Creates the dialog
-
 module.exports = {
     //   commands: {
     //      generateMap
@@ -344,6 +339,8 @@ module.exports = {
     panels: {
         mapGenerator: {
             show,
+            hide,
+            update
         }
     }
 }
