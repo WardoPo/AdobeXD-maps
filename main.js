@@ -13,7 +13,11 @@ async function init() {
 
     const HTML = `
 <style>
+    form {
+        padding: 4px;
+    }
     label {
+        padding-right: 8px;
         margin-bottom: 10px;
     }
     .container {
@@ -24,54 +28,49 @@ async function init() {
     .row {
         align-items: center;
     }
-    .zoomLevel {
-        /* width was 57px */
-        width: 16.6%;
-        height: 81px;
-        margin: 1px;
+    .zoomLevelImage {
+        min-height: 65px;
+        max-height: 150px;
+        object-fit: contain;
     }
-    .zoomLevelInput {
-        height: 85px;
+    .zoomLevel {
         width: 100%;
-        /* background: url("images/zoomlevels.png"); */
-        /* background-size: contain; */
+        height: auto;
+        margin: 1px;
     }
     #zoomValue, #mapType {
         font-weight: 700;
     }
-    #styles {
-        width: 350px;
-    }
     #location, #apiKey, #styles {
-        width: 300px;
+        width: 100%;
     }
     .zoomLevelInput, .mapTypeInput {
         display: flex;
-        /* width was 350px */
         width: 100%;
-        max-width: 350px;
-
-        margin-left: 5px;
         margin-top: 5px;
+        justify-content: space-around;
+    }
+    .mapTypeImage{
+        min-height: 36px;
+        max-height: 60px;
+        object-fit:contain;
     }
     .mapType {
-        /*width was 88 px*/
-        width: 25%;
+        width: 100%;
         position: relative;
-        height: 36px;
         margin: 1px;
-    }
-    .mapTypeInput {
-        height: 40px;
-        background: url("images/roadmap.png");
-        /* background-size: contain; */
+        align-content: center;
     }
     .checkmark {
         position: absolute;
-        width: 16px;
-        height: 16px;
-        top: 12px;
-        left: 36px;
+        
+        min-width: 15px;
+        width: 25%;
+        max-width: 30px;
+
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
         visibility: hidden;
     }
     .mapType.selected .checkmark {
@@ -82,6 +81,7 @@ async function init() {
         color: #777777;
     }
     .stylesLink {
+        text-align: right;
         font-size: 10px;
     }
 </style>
@@ -95,27 +95,43 @@ async function init() {
             <div class="row"><p>Zoom Level: </p><p id="zoomValue">12</p></div>
             <input type="range" min=1 max=20 value=12 step=1 id="zoom" />
             <div class="zoomLevelInput">
-                <div class="zoomLevel"> </div>
-                <div class="zoomLevel"> </div>
-                <div class="zoomLevel"> </div>
-                <div class="zoomLevel"> </div>
-                <div class="zoomLevel"> </div>
-                <div class="zoomLevel"> </div>
+                <div class="zoomLevel">
+                    <img class="zoomLevelImage" src="images/zoomlevels/2.png">
+                </div>
+                <div class="zoomLevel">
+                    <img class="zoomLevelImage" src="images/zoomlevels/5.png">
+                </div>
+                <div class="zoomLevel">
+                    <img class="zoomLevelImage" src="images/zoomlevels/9.png">
+                </div>
+                <div class="zoomLevel">
+                    <img class="zoomLevelImage" src="images/zoomlevels/12.png">
+                </div>
+                <div class="zoomLevel">
+                    <img class="zoomLevelImage" src="images/zoomlevels/15.png">
+                </div>
+                <div class="zoomLevel">
+                    <img class="zoomLevelImage" src="images/zoomlevels/19.png">
+                </div>
             </div>
         </label>
         <label>
             <div class="row"><p>Map Type: </p><p id="mapType">Roadmap</p> </div>
             <div class="mapTypeInput">
-                <div class="mapType selected" style='background:url("images/roadmap.png");background-size:contain;'>
+                <div class="mapType selected">
+                    <img class="mapTypeImage" src="images/maptypes/roadmap.png">
                     <img class="checkmark" src="images/checkmark.png" alt="selected" />
                 </div>
                 <div class="mapType">
+                    <img class="mapTypeImage" src="images/maptypes/terrain.png">
                     <img class="checkmark" src="images/checkmark.png" alt="selected" />
                 </div>
                 <div class="mapType">
+                    <img class="mapTypeImage" src="images/maptypes/satellite.png">
                     <img class="checkmark" src="images/checkmark.png" alt="selected" />
                 </div>
                 <div class="mapType">
+                    <img class="mapTypeImage" src="images/maptypes/hybrid.png"> 
                     <img class="checkmark" src="images/checkmark.png" alt="selected" />
                 </div>
             </div>
@@ -229,8 +245,8 @@ async function show(event) {
 }
 
 function hide(event) {
-    // your code here
-  }
+    // Not necessary at the moment
+}
 
 function update(selection) {
   
