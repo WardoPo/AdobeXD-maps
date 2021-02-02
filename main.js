@@ -2,23 +2,16 @@ const { ImageFill } = require("scenegraph");
 const os = require("os");
 const utils = require("./utils");
 const { alert, error } = require("./lib/dialogs");
+const { editDocument } = require("application");
 
-const dialog = document.createElement('dialog');
-
-const ButtonsEnum = {
-    CANCEL: 0,
-    OK: 1
-};
+const panel = document.createElement("panel");
 
 /**
  * Creates and initializes the dialog UI
  */
 async function init() {
-    dialog.innerHTML = `
+    let HTML = `
 <style>
-    form {
-        width: 500px;
-    }
     label {
         margin-bottom: 10px;
     }
@@ -104,11 +97,6 @@ async function init() {
     }
 </style>
 <form method="dialog">
-    <h1 class="h1">
-        <span>Maps Generator</span>
-        <img class="plugin-icon" src="images/logo2.png" />
-    </h1>
-    <hr />
     <div class="container">
         <label>
             <p>Location</p>
@@ -160,20 +148,21 @@ async function init() {
         </label>
     </div>
     <footer>
-        <button id="btn0" uxp-variant="primary">Cancel</button>
         <button id="btn1" type="submit" uxp-variant="cta">Generate Map</button>
     </footer>
 </form>
     `;
 
+    panel.innerHTML = HTML;
+
     // Zoom level input handling
-    const zoomValueEl = dialog.querySelector("#zoomValue");
-    const zoomSlider = dialog.querySelector("#zoom");
-    zoomSlider.addEventListener("change", function(e) {
+    const zoomValueEl = panel.querySelector("#zoomValue");
+    const zoomSlider = panel.querySelector("#zoom");
+    zoomSlider.addEventListener("input", function (e) {
         zoomValueEl.textContent = zoomSlider.value;
     });
 
-    const zoomLevels = Array.from(dialog.querySelectorAll(".zoomLevel"));
+    const zoomLevels = Array.from(panel.querySelectorAll(".zoomLevel"));
     const zoomLevelValues = [2, 5, 9, 12, 15, 19];
 
     zoomLevels.forEach((el, idx) => {
@@ -185,22 +174,18 @@ async function init() {
     });
 
     // Ensure that the form can submit when the user presses ENTER
-    const form = dialog.querySelector('form');
-    form.onsubmit = () => dialog.close('ok');
+    const form = panel.querySelector('form');
+    form.onsubmit = generateMap;
 
     // Attach button event handlers
-    [0, 1].forEach(idx => {
-        const button = dialog.querySelector(`#btn${idx}`);
-        button.onclick = e => {
-            e.preventDefault();
-            dialog.close( idx === ButtonsEnum.CANCEL ? 'reasonCanceled' : 'ok');
-        }
-    });
+
+    const button = panel.querySelector(`#btn1`);
+    button.onclick = generateMap;
 
     // Map types input handling
-    const mapTypes = Array.from(dialog.querySelectorAll(".mapType"));
+    const mapTypes = Array.from(panel.querySelectorAll(".mapType"));
     const mapTypeValues = ["Roadmap", "Terrain", "Satellite", "Hybrid"];
-    const mapTypeValueEl = dialog.querySelector("#mapType");
+    const mapTypeValueEl = panel.querySelector("#mapType");
 
     mapTypes.forEach((el, idx) => {
         el.onclick = e => {
@@ -212,9 +197,9 @@ async function init() {
     });
 
     // Retrieve previous settings
-    const apiKeyInput = dialog.querySelector("#apiKey");
+    const apiKeyInput = panel.querySelector("#apiKey");
     const savedApiKey = await utils.storageHelper.get('apiKey', '');
-    const styles = dialog.querySelector("#styles");
+    const styles = panel.querySelector("#styles");
     const savedStyles = await utils.storageHelper.get('styles', '');
     apiKeyInput.value = savedApiKey;
     if (os.platform() === "darwin") {
@@ -224,7 +209,6 @@ async function init() {
         styles.value = savedStyles;
     }
 
-    document.appendChild(dialog);
 }
 
 /**
@@ -234,55 +218,26 @@ async function init() {
  */
 function getInputData() {
     return {
-        location: dialog.querySelector('#location').value || '',
-        zoom: dialog.querySelector('#zoom').value || '',
-        mapType: dialog.querySelector('#mapType').textContent.toLowerCase(),
-        locationPin: dialog.querySelector('#locationPin').checked,
-        styles: dialog.querySelector('#styles').value || '',
-        apiKey: dialog.querySelector('#apiKey').value
+        location: panel.querySelector('#location').value || '',
+        zoom: panel.querySelector('#zoom').value || '',
+        mapType: panel.querySelector('#mapType').textContent.toLowerCase(),
+        locationPin: panel.querySelector('#locationPin').checked,
+        styles: panel.querySelector('#styles').value || '',
+        apiKey: panel.querySelector('#apiKey').value
     }
 }
 
-/**
- * Show the input dialog UI
- * 
- * @returns {Promise} Resolves to an object of form {which, values}. `which` indicates which button
- * was pressed. `values` is an object containing the values of the form.
- */
-async function showDialog() {
-    try {
-        const response = await dialog.showModal();
-        if (response === 'reasonCanceled') {
-            // user hit ESC
-            return {which: ButtonsEnum.CANCEL, value: ''};
-        } else {
-            return {which: ButtonsEnum.OK, values: getInputData()};
-        }
-    } catch(err) {
-        // system refused the dialog
-        return {which: ButtonsEnum.CANCEL, value: ''};
-    }
+function show(event) {
+    event.node.appendChild(panel);
 }
+
 
 /**
  * Main function which generates the map
  */
-async function generateMap(selection) {
-    if (selection.items.length === 0) {
-        await error(
-            "Selection Error",
-            "Please select some layers.",
-            "Supported layers are Rectangle, Ellipse, Path and BooleanGroup."
-         );
-        return ;
-    }
+async function generateMap() {
 
-    const response = await showDialog();
-    if (response.which === ButtonsEnum.CANCEL) { // Dialog cancelled
-        return;
-    }
-    
-    const inputValues = response.values;
+    const inputValues = getInputData();
     let mapStyles = '';
 
     // Error checking
@@ -305,69 +260,90 @@ async function generateMap(selection) {
         return;
     }
 
-    const totalObjCount = selection.items.length;
-    let filledObjCount = 0;
-    let finishMsg = "";
 
-    for (let node of selection.items) {
-        let width, height;
+    editDocument({ editLabel: "Generate Map" }, async function (selection) {
 
-        try {
-            ({width, height} = utils.getDimensions(node));
-        } catch(errMsg) {
-            finishMsg += `\n${node.constructor.name} is not supported and so was skipped.\n`
-            continue;
-        }
+        //This error handling is going to move somewhere else
 
-        // Save settings
-        try {
-            await utils.storageHelper.set('apiKey', dialog.querySelector("#apiKey").value);
-        } catch(errMsg) {
-            await error("Error", errMsg);
-            return;
-        }
-        try {
-            await utils.storageHelper.set('styles', dialog.querySelector("#styles").value);
-        } catch(errMsg) {
-            await error("Error", errMsg);
+        if (selection.items.length === 0) {
+            await error(
+                "Selection Error",
+                "Please select some layers.",
+                "Supported layers are Rectangle, Ellipse, Path and BooleanGroup."
+            );
             return;
         }
 
-        const url = "https://maps.googleapis.com/maps/api/staticmap?" +
-            "center=" + encodeURIComponent(inputValues.location) +
-            "&zoom=" + encodeURIComponent(inputValues.zoom) +
-            "&size=" + encodeURIComponent(width) + "x" + encodeURIComponent(height) +
-            "&scale=2" +
-            "&maptype=" + encodeURIComponent(inputValues.mapType) +
-            (inputValues.locationPin ? ("&markers=color:red%7C" + encodeURIComponent(inputValues.location)) : "") +
-            mapStyles +
-            "&key=" + encodeURIComponent(inputValues.apiKey);
+        const totalObjCount = selection.items.length;
+        let filledObjCount = 0;
+        let finishMsg = "";
 
-        try {
-            const tempFile = await utils.downloadImage(url);
-            const imageFill = new ImageFill(tempFile);
-            node.fill = imageFill;
-            node.fillEnabled = true;
-        } catch (errMsg) {
-            await error("Error", errMsg);
-            return;
+        for (let node of selection.items) {
+            let width, height;
+
+            try {
+                ({ width, height } = utils.getDimensions(node));
+            } catch (errMsg) {
+                finishMsg += `\n${node.constructor.name} is not supported and so was skipped.\n`
+                continue;
+            }
+
+            // Save settings
+            try {
+                await utils.storageHelper.set('apiKey', panel.querySelector("#apiKey").value);
+            } catch (errMsg) {
+                await error("Error", errMsg);
+                return;
+            }
+            try {
+                await utils.storageHelper.set('styles', panel.querySelector("#styles").value);
+            } catch (errMsg) {
+                await error("Error", errMsg);
+                return;
+            }
+
+            const url = "https://maps.googleapis.com/maps/api/staticmap?" +
+                "center=" + encodeURIComponent(inputValues.location) +
+                "&zoom=" + encodeURIComponent(inputValues.zoom) +
+                "&size=" + encodeURIComponent(width) + "x" + encodeURIComponent(height) +
+                "&scale=2" +
+                "&maptype=" + encodeURIComponent(inputValues.mapType) +
+                (inputValues.locationPin ? ("&markers=color:red%7C" + encodeURIComponent(inputValues.location)) : "") +
+                mapStyles +
+                "&key=" + encodeURIComponent(inputValues.apiKey);
+
+            try {
+                const tempFile = await utils.downloadImage(url);
+                const imageFill = new ImageFill(tempFile);
+                node.fill = imageFill;
+                node.fillEnabled = true;
+            } catch (errMsg) {
+                await error("Error", errMsg);
+                return;
+            }
+
+            filledObjCount++;
         }
 
-        filledObjCount++;
-    }
+        if (finishMsg) { // Show done dialog only if some layers are skipped
+            finishMsg += `\n${filledObjCount} of ${totalObjCount} selected objects were filled\n`;
+            await alert("Done", finishMsg);
+        }
 
-    if (finishMsg) { // Show done dialog only if some layers are skipped
-        finishMsg += `\n${filledObjCount} of ${totalObjCount} selected objects were filled\n`;
-        await alert("Done", finishMsg);
-    }
+    })
 
-    return ;
+    return;
 }
 
 init(); // Creates the dialog
 
 module.exports = {
-    commands: {
-        generateMap
+    //   commands: {
+    //      generateMap
+    //    },
+    panels: {
+        mapGenerator: {
+            show,
+        }
     }
 }
